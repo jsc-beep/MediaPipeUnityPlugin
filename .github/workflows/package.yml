@@ -8,6 +8,29 @@ on:
     - cron: 0 12 * * 0,3
 jobs：
 
+ linux-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.ref }}
+
+      - name: Build a Docker image
+        run: |
+          docker build --no-cache --build-arg UID=$(id -u) -t mediapipe_unity:latest . -f docker/linux/x86_64/Dockerfile.ubuntu
+      - name: Build
+        run: |
+          docker run --rm \
+            --mount type=bind,src=$PWD/Packages,dst=/home/mediapipe/Packages \
+            --mount type=bind,src=$PWD/Assets,dst=/home/mediapipe/Assets \
+            mediapipe_unity:latest \
+            python build.py build --bazel_build_opts "--experimental_scale_timeouts=10.0 --http_timeout_scaling=10.0" --desktop gpu --opencv cmake -vv
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: base-package
+          path: .
+
   android-build:
     runs-on: ubuntu-latest
     steps:
